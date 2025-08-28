@@ -1,73 +1,23 @@
-<<<<<<< HEAD
-# React + TypeScript + Vite
+# Tic Tac Toe
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, web-based Tic Tac Toe game, hosted at [tic-tac-toe-ikug.vercel.app](https://tic-tac-toe-ikug.vercel.app/).
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Interactive Gameplay**: Enjoy classic Tic Tac Toe with a smooth and responsive user interface.
+- **Player vs Player Mode**: Two players can play on the same device, taking turns with clear visual indication of whose turn it is.
+- **Instant Win Detection**: The game automatically detects a win or draw, highlighting the winning combination and updating the result instantly.
+- **Restart Option**: Quickly reset the board and play again with a single click, no need to reload the page.
+- **Minimalist Design**: Clean, distraction-free layout with modern typography and color accents.
+- **Responsive Layout**: Optimized for desktop, tablet, and mobile screens—play anywhere!
+- **Subtle Animations**: Enjoy smooth transitions and subtle animations that enhance the playing experience.
 
-## Expanding the ESLint configuration
+## Appearance
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Game Board**: Large, clearly defined grid with visually distinct X and O marks.
+- **Highlighting**: Winning line is visually highlighted for an immediate sense of achievement.
+- **Color Scheme**: Bright, modern color palette with good contrast for accessibility.
+- **Status Display**: Prominent display showing the current player's turn or the game result.
+- **Buttons**: Stylish, rounded buttons for restarting the game.
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-=======
-# TIC-TAC-TOE
->>>>>>> d42ee517bd9444377f491d1798f2829c63bafb5c
+> Explore the game live: [tic-tac-toe-ikug.vercel.app](https://tic-tac-toe-ikug.vercel.app/)
