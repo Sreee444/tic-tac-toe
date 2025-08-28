@@ -1,3 +1,13 @@
+/* Floating gamepad emoji animation */
+.floating-gamepad-emoji {
+  animation: floating-gamepad 2.2s ease-in-out infinite;
+}
+
+@keyframes floating-gamepad {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-18px); }
+  100% { transform: translateY(0); }
+}
 .winning-square {
   background: linear-gradient(135deg, #b2f7ef 60%, #ff6b6b 100%) !important;
   animation: winFlash 0.7s alternate 3;

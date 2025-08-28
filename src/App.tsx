@@ -6,6 +6,8 @@ import Board from './components/Board';
 import Scoreboard from './components/Scoreboard';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { getEasyMove, getMediumMove, getHardMove } from './utils/ai';
+import { launchConfetti } from './utils/confetti';
+import { playMoveSound, playWinSound, playDrawSound, playLossSound } from './utils/sound';
 import './index.css';
 
 
@@ -36,14 +38,21 @@ function calculateWinner(squares: string[]) {
   return null;
 }
 
+
 const App: React.FC = () => {
   const [mode, setMode] = useState<Mode | null>(null);
   const [squares, setSquares] = useState([...emptyBoard]);
   const [xIsNext, setXIsNext] = useState(true);
   const [status, setStatus] = useState('');
   const [gameEnded, setGameEnded] = useState(false);
-  const [playerSymbol, setPlayerSymbol] = useState<'X' | 'O'>('X'); // Track what symbol the player is using
-  
+  const [playerSymbol, setPlayerSymbol] = useState<'X' | 'O'>('X');
+  // Two player customizations
+  const [showTwoPlayerSetup, setShowTwoPlayerSetup] = useState(false);
+  const [playerXName, setPlayerXName] = useState('Player X');
+  const [playerOName, setPlayerOName] = useState('Player O');
+  const [playerXColor, setPlayerXColor] = useState('#e74c3c');
+  const [playerOColor, setPlayerOColor] = useState('#3498db');
+
   // Separate score tracking for each mode
   const [easyScores, setEasyScores] = useLocalStorage('easyScores', { playerWins: 0, aiWins: 0, draws: 0 });
   const [mediumScores, setMediumScores] = useLocalStorage('mediumScores', { playerWins: 0, aiWins: 0, draws: 0 });
@@ -75,13 +84,13 @@ const App: React.FC = () => {
   const [winningLine, setWinningLine] = useState<number[] | null>(null);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
-  const [resultAnimation, setResultAnimation] = useState<'win' | 'loss' | 'draw' | null>(null);
+
 
   const resetGame = useCallback(() => {
     setSquares([...emptyBoard]);
     setGameEnded(false);
     setWinningLine(null);
-    setResultAnimation(null);
+
     
     if (mode === 'two') {
       setXIsNext(true);
@@ -112,6 +121,7 @@ const App: React.FC = () => {
       let isPlayerWin = false;
       let isAIWin = false;
       if (mode === 'two') {
+        playWinSound();
         // Two player mode - track X and O wins
         const twoPlayerScores = currentScores as TwoPlayerScores;
         if (winner === 'X') {
@@ -119,13 +129,17 @@ const App: React.FC = () => {
         } else {
           updateCurrentScores({ ...twoPlayerScores, oWins: twoPlayerScores.oWins + 1 });
         }
+        // Confetti for two player win
+        setTimeout(() => launchConfetti(), 200);
       } else {
         // AI modes - track player vs AI wins
         const aiScores = currentScores as AIScores;
         if (winner === playerSymbol) {
+          playWinSound();
           updateCurrentScores({ ...aiScores, playerWins: aiScores.playerWins + 1 });
           isPlayerWin = true;
         } else {
+          playLossSound();
           updateCurrentScores({ ...aiScores, aiWins: aiScores.aiWins + 1 });
           isAIWin = true;
         }
@@ -133,24 +147,26 @@ const App: React.FC = () => {
       // Animation and streaks
       if (mode !== 'two') {
         if (isPlayerWin) {
-          setResultAnimation('win');
           setCurrentStreak((s) => {
             const newStreak = s + 1;
             setBestStreak((b) => Math.max(b, newStreak));
             return newStreak;
           });
         } else if (isAIWin) {
-          setResultAnimation('loss');
           setCurrentStreak(0);
         }
       }
-      setStatus(`Player ${winner} wins! 🎉`);
+      setStatus(mode === 'two'
+        ? `${winner === 'X' ? playerXName : playerOName} (${winner}) wins! 🎉`
+        : `Player ${winner} wins! 🎉`
+      );
       // Auto-restart after 2 seconds
       setTimeout(() => resetGame(), 2000);
     } else if (squares.every(Boolean) && !result && !gameEnded) {
+      playDrawSound();
       setStatus("It's a draw! 🤝");
       setGameEnded(true);
-      setResultAnimation('draw');
+  // draw animation removed
       setCurrentStreak(0);
       setWinningLine(null);
       const currentScores = getCurrentScores();
@@ -159,9 +175,9 @@ const App: React.FC = () => {
     } else if (!result && !squares.every(Boolean)) {
       setStatus('');
       setWinningLine(null);
-      setResultAnimation(null);
+  // resultAnimation reset removed
     }
-  }, [squares, gameEnded, getCurrentScores, updateCurrentScores, mode, playerSymbol, resetGame]);
+  }, [squares, gameEnded, getCurrentScores, updateCurrentScores, mode, playerSymbol, resetGame, playerXName, playerOName]);
 
   const handleClick = React.useCallback((i: number) => {
     if (squares[i] || calculateWinner(squares) || gameEnded) return;
@@ -169,6 +185,7 @@ const App: React.FC = () => {
     nextSquares[i] = xIsNext ? 'X' : 'O';
     setSquares(nextSquares);
     setXIsNext(!xIsNext);
+    playMoveSound();
   }, [squares, xIsNext, gameEnded]);
 
   useEffect(() => {
@@ -201,27 +218,33 @@ const App: React.FC = () => {
 
 
   function startGame(selectedMode: Mode) {
+    if (selectedMode === 'two') {
+      setShowTwoPlayerSetup(true);
+      return;
+    }
     setMode(selectedMode);
     setSquares([...emptyBoard]);
     setGameEnded(false);
-    
-    if (selectedMode === 'two') {
-      // Two player mode - X always starts
-      setXIsNext(true);
-      setPlayerSymbol('X');
-      setStatus('X starts!');
+    // AI modes - randomize who goes first
+    const playerGoesFirst = Math.random() < 0.5;
+    setPlayerSymbol(playerGoesFirst ? 'X' : 'O');
+    setXIsNext(true); // X always starts, but player might be O
+    if (playerGoesFirst) {
+      setStatus('You go first! (X)');
     } else {
-      // AI modes - randomize who goes first
-      const playerGoesFirst = Math.random() < 0.5;
-      setPlayerSymbol(playerGoesFirst ? 'X' : 'O');
-      setXIsNext(true); // X always starts, but player might be O
-      
-      if (playerGoesFirst) {
-        setStatus('You go first! (X)');
-      } else {
-        setStatus('AI goes first! (X)');
-      }
+      setStatus('AI goes first! (X)');
     }
+  }
+
+  // Called after two player setup is submitted
+  function startTwoPlayerGame() {
+    setMode('two');
+    setSquares([...emptyBoard]);
+    setGameEnded(false);
+    setXIsNext(true);
+    setPlayerSymbol('X');
+    setStatus(`${playerXName} (X) starts!`);
+    setShowTwoPlayerSetup(false);
   }
 
   if (!mode) {
@@ -247,6 +270,7 @@ const App: React.FC = () => {
             alignItems: 'center',
             marginBottom: '2rem',
           }}>
+            <span className="floating-gamepad-emoji" style={{ fontSize: '2.5rem', marginBottom: '0.2rem', display: 'inline-block' }} role="img" aria-label="gamepad">🎮</span>
             <h1 style={{
               fontSize: '4rem',
               fontWeight: 'bold',
@@ -262,7 +286,66 @@ const App: React.FC = () => {
               Tic Tac Toe
             </h1>
           </div>
-          
+
+          {/* Two Player Setup Modal */}
+          {showTwoPlayerSetup && (
+            <div style={{
+              position: 'fixed',
+              top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 1000
+            }}>
+              <div style={{
+                background: 'white',
+                borderRadius: '16px',
+                padding: '2rem',
+                minWidth: '320px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                display: 'flex', flexDirection: 'column', gap: '1.2rem',
+                alignItems: 'center'
+              }}>
+                <h2 style={{ margin: 0, fontWeight: 700, fontSize: '1.5rem', color: '#333' }}>Two Player Setup</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.7rem', width: '100%' }}>
+                  <label style={{ fontWeight: 500, color: '#e74c3c' }}>
+                    Player X Name:
+                    <input type="text" value={playerXName} onChange={e => setPlayerXName(e.target.value)}
+                      style={{ marginLeft: 8, borderRadius: 6, border: '1px solid #ccc', padding: '4px 8px', width: '70%' }}
+                    />
+                  </label>
+                  <label style={{ fontWeight: 500, color: '#e74c3c' }}>
+                    X Color:
+                    <input type="color" value={playerXColor} onChange={e => setPlayerXColor(e.target.value)}
+                      style={{ marginLeft: 8, border: 'none', width: 32, height: 24, verticalAlign: 'middle' }}
+                    />
+                  </label>
+                  <label style={{ fontWeight: 500, color: '#3498db' }}>
+                    Player O Name:
+                    <input type="text" value={playerOName} onChange={e => setPlayerOName(e.target.value)}
+                      style={{ marginLeft: 8, borderRadius: 6, border: '1px solid #ccc', padding: '4px 8px', width: '70%' }}
+                    />
+                  </label>
+                  <label style={{ fontWeight: 500, color: '#3498db' }}>
+                    O Color:
+                    <input type="color" value={playerOColor} onChange={e => setPlayerOColor(e.target.value)}
+                      style={{ marginLeft: 8, border: 'none', width: 32, height: 24, verticalAlign: 'middle' }}
+                    />
+                  </label>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                  <button onClick={startTwoPlayerGame} style={{
+                    background: 'linear-gradient(45deg, #4CAF50, #45a049)', color: 'white', fontWeight: 700,
+                    border: 'none', borderRadius: 8, padding: '10px 24px', fontSize: '1rem', cursor: 'pointer'
+                  }}>Start</button>
+                  <button onClick={() => setShowTwoPlayerSetup(false)} style={{
+                    background: 'linear-gradient(45deg, #757575, #616161)', color: 'white', fontWeight: 700,
+                    border: 'none', borderRadius: 8, padding: '10px 24px', fontSize: '1rem', cursor: 'pointer'
+                  }}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{
             backgroundColor: 'rgba(255,255,255,0.9)',
             borderRadius: '20px',
@@ -278,7 +361,6 @@ const App: React.FC = () => {
             }}>
               🎯 Welcome! Choose a mode to start playing:
             </p>
-            
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <button
                 style={{
@@ -299,7 +381,6 @@ const App: React.FC = () => {
               >
                 🟢 Easy
               </button>
-              
               <button
                 style={{
                   padding: '15px 25px',
@@ -319,7 +400,6 @@ const App: React.FC = () => {
               >
                 🟡 Medium
               </button>
-              
               <button
                 style={{
                   padding: '15px 25px',
@@ -339,7 +419,6 @@ const App: React.FC = () => {
               >
                 🔴 Hard
               </button>
-              
               <button
                 style={{
                   padding: '15px 25px',
@@ -361,7 +440,6 @@ const App: React.FC = () => {
               </button>
             </div>
           </div>
-          
           <p style={{
             marginTop: '2rem',
             color: 'rgba(255,255,255,0.8)',
@@ -377,131 +455,165 @@ const App: React.FC = () => {
   return (
     <div style={{
       minHeight: '100vh',
+      width: '100vw',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       padding: '20px',
-      fontFamily: 'Arial, sans-serif'
+      fontFamily: 'Arial, sans-serif',
+      boxSizing: 'border-box',
     }}>
       <div style={{
-        maxWidth: '500px',
         width: '100%',
-        textAlign: 'center'
+        maxWidth: 500,
+        margin: '0 auto',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxSizing: 'border-box',
+        padding: '0 8px',
       }}>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          marginBottom: '1rem',
-        }}>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <span className="floating-gamepad-emoji" style={{ fontSize: '2.5rem', marginBottom: '0.2rem', display: 'inline-block' }} role="img" aria-label="gamepad">🎮</span>
           <h1 style={{
-            fontSize: '3rem',
+            fontSize: 'clamp(2rem, 7vw, 3rem)',
             fontWeight: 'bold',
             color: 'white',
             textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
             textAlign: 'center',
             lineHeight: '1',
-            margin: '0',
+            margin: '0 0 1rem 0',
             padding: '0',
             width: '100%',
-            letterSpacing: '0.05em'
+            letterSpacing: '0.05em',
+            wordBreak: 'break-word',
           }}>
             Tic Tac Toe
           </h1>
         </div>
-        
         <Scoreboard 
           mode={mode} 
           playerSymbol={playerSymbol}
           scores={getCurrentScores()}
+          playerXName={playerXName}
+          playerOName={playerOName}
+          playerXColor={playerXColor}
+          playerOColor={playerOColor}
+          xIsNext={xIsNext}
         />
-        
         <div style={{
-          backgroundColor: 'rgba(255,255,255,0.9)',
-          borderRadius: '20px',
-          padding: '2rem',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
-          backdropFilter: 'blur(10px)',
-          marginTop: '1rem'
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}>
           <div style={{
-            fontSize: '1.5rem',
-            fontWeight: 'bold',
-            color: '#333',
-            marginBottom: '1rem'
+            backgroundColor: 'rgba(255,255,255,0.9)',
+            borderRadius: '20px',
+            padding: '2rem',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
+            backdropFilter: 'blur(10px)',
+            marginTop: '1rem',
+            width: '100%',
+            boxSizing: 'border-box',
           }}>
-            {status}
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', position: 'relative' }}>
-            <Board 
-              squares={squares} 
-              onClick={handleClick} 
-              winningLine={winningLine}
-            />
-          </div>
-          {(mode === 'easy' || mode === 'medium' || mode === 'hard') && (
+            {/* Show current turn for two player mode */}
+            {mode === 'two' && !gameEnded && (
+              <div style={{
+                fontSize: 'clamp(1.1rem, 4vw, 1.3rem)',
+                fontWeight: 'bold',
+                color: xIsNext ? playerXColor : playerOColor,
+                marginBottom: '0.5rem',
+                transition: 'color 0.2s',
+                wordBreak: 'break-word',
+              }}>
+                {xIsNext ? `${playerXName} (X)` : `${playerOName} (O)`}’s turn
+              </div>
+            )}
             <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '2rem',
-              marginBottom: '1rem',
+              fontSize: 'clamp(1.1rem, 4vw, 1.5rem)',
               fontWeight: 'bold',
-              fontSize: '1.1rem',
               color: '#333',
-              background: 'rgba(255,255,255,0.7)',
-              borderRadius: '10px',
-              padding: '0.5rem 1.5rem',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.07)'
+              marginBottom: '1rem',
+              wordBreak: 'break-word',
             }}>
-              <span>Current Streak: <span style={{ color: '#4ecdc4' }}>{currentStreak}</span></span>
-              <span>Best Streak: <span style={{ color: '#ff6b6b' }}>{bestStreak}</span></span>
+              {status}
             </div>
-          )}
-          
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-            <button
-              style={{
-                padding: '10px 20px',
-                fontSize: '1rem',
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', position: 'relative', width: '100%' }}>
+              <Board 
+                squares={squares} 
+                onClick={handleClick} 
+                winningLine={winningLine}
+                playerXColor={playerXColor}
+                playerOColor={playerOColor}
+              />
+            </div>
+            {(mode === 'easy' || mode === 'medium' || mode === 'hard') && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                gap: '2rem',
+                marginBottom: '1rem',
                 fontWeight: 'bold',
-                color: 'white',
-                background: 'linear-gradient(45deg, #4CAF50, #45a049)',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 8px rgba(76,175,80,0.3)'
-              }}
-              onClick={resetGame}
-            >
-              🔄 Restart
-            </button>
-            
-            <button
-              style={{
-                padding: '10px 20px',
-                fontSize: '1rem',
-                fontWeight: 'bold',
-                color: 'white',
-                background: 'linear-gradient(45deg, #757575, #616161)',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 8px rgba(117,117,117,0.3)'
-              }}
-              onClick={() => setMode(null)}
-            >
-              ⬅️ Back
-            </button>
+                fontSize: 'clamp(0.9rem, 3vw, 1.1rem)',
+                color: '#333',
+                background: 'rgba(255,255,255,0.7)',
+                borderRadius: '10px',
+                padding: '0.5rem 1.5rem',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                flexWrap: 'wrap',
+              }}>
+                <span>Current Streak: <span style={{ color: '#4ecdc4' }}>{currentStreak}</span></span>
+                <span>Best Streak: <span style={{ color: '#ff6b6b' }}>{bestStreak}</span></span>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                style={{
+                  padding: '10px 20px',
+                  fontSize: 'clamp(0.9rem, 3vw, 1rem)',
+                  fontWeight: 'bold',
+                  color: 'white',
+                  background: 'linear-gradient(45deg, #4CAF50, #45a049)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 8px rgba(76,175,80,0.3)',
+                  marginBottom: 8,
+                }}
+                onClick={resetGame}
+              >
+                🔄 Restart
+              </button>
+              <button
+                style={{
+                  padding: '10px 20px',
+                  fontSize: 'clamp(0.9rem, 3vw, 1rem)',
+                  fontWeight: 'bold',
+                  color: 'white',
+                  background: 'linear-gradient(45deg, #757575, #616161)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 8px rgba(117,117,117,0.3)',
+                  marginBottom: 8,
+                }}
+                onClick={() => setMode(null)}
+              >
+                ⬅️ Back
+              </button>
+            </div>
           </div>
         </div>
-        
         <p style={{
           marginTop: '2rem',
           color: 'rgba(255,255,255,0.8)',
-          fontSize: '0.9rem'
+          fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
+          wordBreak: 'break-word',
         }}>
           Made with ❤️ by Sreee444
         </p>

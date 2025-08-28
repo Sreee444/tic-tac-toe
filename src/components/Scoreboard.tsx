@@ -6,6 +6,11 @@ interface ScoreboardProps {
   mode: Mode | null;
   playerSymbol?: 'X' | 'O';
   scores: { playerWins: number; aiWins: number; draws: number } | { xWins: number; oWins: number; draws: number };
+  playerXName?: string;
+  playerOName?: string;
+  playerXColor?: string;
+  playerOColor?: string;
+  xIsNext?: boolean;
 }
 
 const getModeTitle = (mode: Mode | null) => {
@@ -18,13 +23,14 @@ const getModeTitle = (mode: Mode | null) => {
   }
 };
 
-const Scoreboard: React.FC<ScoreboardProps> = ({ mode, playerSymbol = 'X', scores }) => {
+const Scoreboard: React.FC<ScoreboardProps> = ({ mode, playerSymbol = 'X', scores, playerXName = 'Player X', playerOName = 'Player O', playerXColor = '#e74c3c', playerOColor = '#3498db', xIsNext }) => {
   const isAIMode = mode === 'easy' || mode === 'medium' || mode === 'hard';
-  
+
   // Handle different score structures
   let leftScore, rightScore, drawScore;
   let leftLabel, rightLabel;
-  
+  let leftColor = playerXColor, rightColor = playerOColor;
+
   if (isAIMode) {
     const aiScores = scores as { playerWins: number; aiWins: number; draws: number };
     leftScore = aiScores.playerWins;
@@ -32,15 +38,30 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ mode, playerSymbol = 'X', score
     drawScore = aiScores.draws;
     leftLabel = `Player (${playerSymbol})`;
     rightLabel = `AI (${playerSymbol === 'X' ? 'O' : 'X'})`;
+    leftColor = '#e74c3c';
+    rightColor = '#3498db';
   } else {
     const twoPlayerScores = scores as { xWins: number; oWins: number; draws: number };
     leftScore = twoPlayerScores.xWins;
     rightScore = twoPlayerScores.oWins;
     drawScore = twoPlayerScores.draws;
-    leftLabel = 'X Wins';
-    rightLabel = 'O Wins';
+    leftLabel = playerXName + ' (X)';
+    rightLabel = playerOName + ' (O)';
   }
-  
+
+  // Highlight active player in two player mode
+  const highlightStyle = (isLeft: boolean) => {
+    if (mode === 'two' && typeof xIsNext === 'boolean') {
+      return {
+        boxShadow: xIsNext === isLeft ? `0 0 0 3px ${isLeft ? playerXColor : playerOColor}` : 'none',
+        background: xIsNext === isLeft ? (isLeft ? playerXColor + '22' : playerOColor + '22') : 'none',
+        borderRadius: 8,
+        transition: 'box-shadow 0.2s, background 0.2s',
+      };
+    }
+    return {};
+  };
+
   return (
     <div style={{
       backgroundColor: 'rgba(255,255,255,0.9)',
@@ -48,7 +69,9 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ mode, playerSymbol = 'X', score
       borderRadius: '12px',
       boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
       marginBottom: '1rem',
-      textAlign: 'center'
+      textAlign: 'center',
+      maxWidth: 500,
+      width: '100%',
     }}>
       <h3 style={{
         margin: '0 0 1rem 0',
@@ -62,30 +85,34 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ mode, playerSymbol = 'X', score
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: '2rem'
+        gap: '2rem',
+        flexWrap: 'wrap',
       }}>
         <div style={{
           textAlign: 'center',
-          padding: '0.5rem'
+          padding: '0.5rem',
+          minWidth: 80,
+          ...highlightStyle(true)
         }}>
           <div style={{
             fontSize: '1.5rem',
             fontWeight: 'bold',
-            color: '#e74c3c'
+            color: leftColor
           }}>
             {isAIMode ? '👤' : '❌'} {leftScore}
           </div>
           <div style={{
             fontSize: '0.8rem',
-            color: '#666'
+            color: '#666',
+            wordBreak: 'break-word',
           }}>
             {leftLabel}
           </div>
         </div>
-        
         <div style={{
           textAlign: 'center',
-          padding: '0.5rem'
+          padding: '0.5rem',
+          minWidth: 80,
         }}>
           <div style={{
             fontSize: '1.5rem',
@@ -101,21 +128,23 @@ const Scoreboard: React.FC<ScoreboardProps> = ({ mode, playerSymbol = 'X', score
             Draws
           </div>
         </div>
-        
         <div style={{
           textAlign: 'center',
-          padding: '0.5rem'
+          padding: '0.5rem',
+          minWidth: 80,
+          ...highlightStyle(false)
         }}>
           <div style={{
             fontSize: '1.5rem',
             fontWeight: 'bold',
-            color: '#3498db'
+            color: rightColor
           }}>
             {isAIMode ? '🤖' : '⭕'} {rightScore}
           </div>
           <div style={{
             fontSize: '0.8rem',
-            color: '#666'
+            color: '#666',
+            wordBreak: 'break-word',
           }}>
             {rightLabel}
           </div>
